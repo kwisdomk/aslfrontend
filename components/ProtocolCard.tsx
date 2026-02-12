@@ -1,12 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Task, HardwareMode, Priority } from '../types';
-import { Cpu, Battery, ShieldAlert, BookOpen, Terminal, Clock, Activity } from 'lucide-react';
+import { Cpu, Battery, BookOpen, Terminal, ShieldAlert, Edit2, Check } from 'lucide-react';
 
 interface ProtocolCardProps {
   task: Task;
+  onUpdateProgress?: (id: string, newProgress: number) => void;
 }
 
-const ProtocolCard: React.FC<ProtocolCardProps> = ({ task }) => {
+const ProtocolCard: React.FC<ProtocolCardProps> = ({ task, onUpdateProgress }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [localProgress, setLocalProgress] = useState(task.progress);
+
   const getModeIcon = (mode: HardwareMode) => {
     switch (mode) {
       case HardwareMode.PERFORMANCE: return <Cpu className="w-4 h-4 text-rose-500" />;
@@ -31,19 +35,27 @@ const ProtocolCard: React.FC<ProtocolCardProps> = ({ task }) => {
     );
   };
 
+  const handleSave = () => {
+    if (onUpdateProgress) {
+        onUpdateProgress(task.id, localProgress);
+    }
+    setIsEditing(false);
+  };
+
   return (
-    <div className="group bg-white dark:bg-[#1C1C1E] rounded-3xl p-8 mb-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none hover:shadow-[0_20px_40px_rgb(0,0,0,0.06)] transition-all duration-300 transform hover:-translate-y-1">
+    <div className="group bg-white dark:bg-[#1C1C1E] rounded-3xl p-8 mb-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none hover:shadow-[0_20px_40px_rgb(0,0,0,0.06)] transition-all duration-300 transform hover:-translate-y-1 relative">
       <div className="flex justify-between items-start mb-4">
-        <h3 className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight">{task.name}</h3>
+        {/* Update: Changed text-slate-900 to text-black for visibility */}
+        <h3 className="text-xl font-semibold text-black dark:text-white tracking-tight">{task.name}</h3>
         {getPriorityBadge(task.priority)}
       </div>
       
       <div className="flex items-center gap-6 text-sm mb-6">
-        <div className="flex items-center space-x-2 text-slate-500 dark:text-slate-400">
+        <div className="flex items-center space-x-2 text-slate-600 dark:text-slate-400">
             {getModeIcon(task.mode)}
             <span className="font-medium">{task.mode}</span>
         </div>
-        <div className="flex items-center space-x-2 text-slate-500 dark:text-slate-400">
+        <div className="flex items-center space-x-2 text-slate-600 dark:text-slate-400">
             <Terminal className="w-4 h-4" />
             <span className="font-medium">{task.memoryFocus}</span>
         </div>
@@ -56,20 +68,45 @@ const ProtocolCard: React.FC<ProtocolCardProps> = ({ task }) => {
         </div>
       )}
 
-      {/* Clean Progress */}
-      <div>
-        <div className="flex justify-between text-sm font-medium text-slate-400 dark:text-slate-500 mb-2">
+      {/* Progress Section */}
+      <div className="relative">
+        <div className="flex justify-between text-sm font-medium text-slate-500 dark:text-slate-500 mb-2">
             <span>Progress</span>
-            <span className="flex items-center text-rose-500 dark:text-rose-400">
-                {task.estimatedHours ? `${task.estimatedHours}h left` : 'TBD'}
-            </span>
+            <div className="flex items-center gap-3">
+                <span className={`flex items-center transition-colors ${isEditing ? 'text-blue-500 font-bold' : 'text-rose-500 dark:text-rose-400'}`}>
+                    {isEditing ? `${localProgress.toFixed(0)}%` : (task.estimatedHours ? `${task.estimatedHours}h left` : 'TBD')}
+                </span>
+                
+                {onUpdateProgress && (
+                    <button 
+                        onClick={() => isEditing ? handleSave() : setIsEditing(true)}
+                        className={`p-1.5 rounded-full transition-colors ${isEditing ? 'bg-blue-100 text-blue-600 hover:bg-blue-200' : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600 dark:bg-white/5 dark:hover:bg-white/10'}`}
+                    >
+                        {isEditing ? <Check className="w-3.5 h-3.5" /> : <Edit2 className="w-3.5 h-3.5" />}
+                    </button>
+                )}
+            </div>
         </div>
-        <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
-            <div 
-                className="bg-slate-900 dark:bg-white h-full rounded-full transition-all duration-1000 ease-out"
-                style={{ width: `${task.progress}%` }}
-            ></div>
-        </div>
+        
+        {isEditing ? (
+            <div className="h-8 flex items-center">
+                <input 
+                    type="range" 
+                    min="0" 
+                    max="100" 
+                    value={localProgress} 
+                    onChange={(e) => setLocalProgress(Number(e.target.value))}
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700 accent-blue-600"
+                />
+            </div>
+        ) : (
+            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+                <div 
+                    className="bg-slate-900 dark:bg-white h-full rounded-full transition-all duration-1000 ease-out"
+                    style={{ width: `${task.progress}%` }}
+                ></div>
+            </div>
+        )}
       </div>
     </div>
   );

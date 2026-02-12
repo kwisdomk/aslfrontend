@@ -7,6 +7,9 @@
 ## Overview
 Athena is a high-performance intelligence planner designed to balance the dual workloads of the **IBM i3 Internship** (Professional Arm) and **Computer Science Degree** (Academic Arm). It implements the "Swerve Protocol" to dynamically adjust priorities based on critical bottlenecks and hardware constraints.
 
+## Project Roadmap
+View the development roadmap for the Athena application here: **[ROADMAP.md](./ROADMAP.md)**
+
 ## Core Systems
 
 ### 1. Dual-Arm Architecture

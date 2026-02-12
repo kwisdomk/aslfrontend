@@ -12,7 +12,8 @@ import {
   Zap,
   Activity,
   AlertTriangle,
-  ArrowRight
+  ArrowRight,
+  Save
 } from 'lucide-react';
 import { USER_CONTEXT, PROFESSIONAL_ARM, ACADEMIC_ARM, CAREER_MAPS } from './constants';
 import RadialProgress from './components/RadialProgress';
@@ -47,8 +48,16 @@ const App: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
   
-  // State: The Source of Truth
-  const [athenaCore, setAthenaCore] = useState(INITIAL_CORE_STATE);
+  // State: The Source of Truth (w/ Persistence)
+  const [athenaCore, setAthenaCore] = useState(() => {
+    const saved = localStorage.getItem('athena_core_v1');
+    return saved ? JSON.parse(saved) : INITIAL_CORE_STATE;
+  });
+
+  // Persistence Effect
+  useEffect(() => {
+    localStorage.setItem('athena_core_v1', JSON.stringify(athenaCore));
+  }, [athenaCore]);
 
   useEffect(() => {
     if (isDark) {
@@ -58,11 +67,32 @@ const App: React.FC = () => {
     }
   }, [isDark]);
 
+  // Core Update Handler
+  const handleTaskUpdate = (taskId: string, newProgress: number) => {
+    setAthenaCore((prev: typeof INITIAL_CORE_STATE) => {
+        // Search and update in Professional Tracks
+        const newProfTracks = prev.professional.tracks.map(t => 
+            t.id === taskId ? { ...t, progress: newProgress } : t
+        );
+
+        // Search and update in Academic Units
+        const newAcadUnits = prev.academic.units.map(u => 
+            u.id === taskId ? { ...u, progress: newProgress } : u
+        );
+
+        return {
+            ...prev,
+            professional: { ...prev.professional, tracks: newProfTracks },
+            academic: { ...prev.academic, units: newAcadUnits }
+        };
+    });
+  };
+
   // 2. The Logic Gates (The "Swerve Protocol")
   const calculateLogicGates = () => {
     // A. Progress Calculations
-    const acadProgress = athenaCore.academic.units.reduce((acc, u) => acc + u.progress, 0) / athenaCore.academic.units.length;
-    const profProgress = athenaCore.professional.tracks.reduce((acc, t) => acc + t.progress, 0) / athenaCore.professional.tracks.length;
+    const acadProgress = athenaCore.academic.units.reduce((acc: number, u: any) => acc + u.progress, 0) / athenaCore.academic.units.length;
+    const profProgress = athenaCore.professional.tracks.reduce((acc: number, t: any) => acc + t.progress, 0) / athenaCore.professional.tracks.length;
     const overallProgress = (acadProgress + profProgress) / 2;
 
     // B. Balance Check (Swerve Protocol)
@@ -71,16 +101,14 @@ const App: React.FC = () => {
     const swerveStatus = isAcademicLag ? 'ACADEMIC_LAG' : 'BALANCED';
 
     // C. Bottleneck Alert
-    // If QRadar Deployment (Q_DEPLOY) is active (>0) or selected, trigger warning. 
-    // For now, we check if it is active in the core data.
-    const qDeploy = athenaCore.professional.tracks.find(t => t.id === 'Q_DEPLOY');
+    const qDeploy = athenaCore.professional.tracks.find((t: any) => t.id === 'Q_DEPLOY');
     const isBottleneckActive = qDeploy && qDeploy.bottleneck && qDeploy.progress > 0 && qDeploy.progress < 100;
 
     // D. HPI Velocity
     // (Total Progress Points / Total Hours Logged)
     const totalProgressPoints = 
-        athenaCore.academic.units.reduce((a, b) => a + b.progress, 0) + 
-        athenaCore.professional.tracks.reduce((a, b) => a + b.progress, 0);
+        athenaCore.academic.units.reduce((a: number, b: any) => a + b.progress, 0) + 
+        athenaCore.professional.tracks.reduce((a: number, b: any) => a + b.progress, 0);
     const totalHours = athenaCore.academic.hoursLogged + athenaCore.professional.hoursLogged;
     // Multiplier to make the coefficient look realistic (e.g. around 1.1 - 1.5)
     const velocity = totalHours > 0 ? ((totalProgressPoints / totalHours) * 2).toFixed(2) : "0.00";
@@ -107,7 +135,7 @@ const App: React.FC = () => {
     sourceConst.forEach(phase => {
       phase.tasks.forEach(staticTask => {
         // Find dynamic progress from Core
-        const coreTask = coreSource.find(t => t.id === staticTask.id);
+        const coreTask = coreSource.find((t: any) => t.id === staticTask.id);
         const progress = coreTask ? coreTask.progress : staticTask.progress;
         allTasks.push({ ...staticTask, progress });
       });
@@ -145,34 +173,34 @@ const App: React.FC = () => {
          <div className={`absolute top-0 right-0 w-[400px] h-[400px] rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none transition-colors duration-1000 ${swerveStatus === 'ACADEMIC_LAG' ? 'bg-amber-100/40 dark:bg-amber-900/10' : 'bg-rose-100/40 dark:bg-rose-900/10'}`}></div>
          
          <div className="relative z-10 max-w-xl">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900 dark:text-white mb-4">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-black dark:text-white mb-4">
               Welcome back, {USER_CONTEXT.name.split(' ')[0]}.
             </h1>
-            <p className="text-lg text-slate-500 dark:text-slate-400 font-medium mb-8 leading-relaxed">
-              You are operating at <span className="text-rose-500 font-semibold">{velocity}x Velocity</span>. 
+            <p className="text-lg text-slate-600 dark:text-slate-400 font-medium mb-8 leading-relaxed">
+              You are operating at <span className="text-rose-600 dark:text-rose-500 font-semibold">{velocity}x Velocity</span>. 
               {dailyTasks.length > 0 && ` Primary focus is ${dailyTasks[0].name}.`}
             </p>
             
             <div className="flex flex-wrap gap-4">
-                <div className="flex items-center gap-2 bg-slate-50 dark:bg-white/5 px-4 py-2 rounded-full border border-slate-100 dark:border-white/5">
+                <div className="flex items-center gap-2 bg-slate-50 dark:bg-white/5 px-4 py-2 rounded-full border border-slate-200 dark:border-white/5">
                     <Zap className="w-4 h-4 text-amber-500" />
                     <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">HPI: {velocity}</span>
                 </div>
                 {swerveStatus === 'ACADEMIC_LAG' ? (
-                   <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 px-4 py-2 rounded-full border border-amber-100 dark:border-amber-700/30 animate-pulse">
-                      <AlertTriangle className="w-4 h-4 text-amber-500" />
-                      <span className="text-sm font-semibold text-amber-700 dark:text-amber-400">Swerve: Academic Lag</span>
+                   <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 px-4 py-2 rounded-full border border-amber-200 dark:border-amber-700/30 animate-pulse">
+                      <AlertTriangle className="w-4 h-4 text-amber-600" />
+                      <span className="text-sm font-semibold text-amber-800 dark:text-amber-400">Swerve: Academic Lag</span>
                    </div>
                 ) : (
-                  <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 px-4 py-2 rounded-full border border-green-100 dark:border-green-700/30">
-                      <Activity className="w-4 h-4 text-green-500" />
-                      <span className="text-sm font-semibold text-green-700 dark:text-green-400">Protocol Balanced</span>
+                  <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 px-4 py-2 rounded-full border border-green-200 dark:border-green-700/30">
+                      <Activity className="w-4 h-4 text-green-600" />
+                      <span className="text-sm font-semibold text-green-800 dark:text-green-400">Protocol Balanced</span>
                   </div>
                 )}
                 {isBottleneckActive && (
-                   <div className="flex items-center gap-2 bg-rose-50 dark:bg-rose-900/20 px-4 py-2 rounded-full border border-rose-100 dark:border-rose-700/30">
-                      <Server className="w-4 h-4 text-rose-500" />
-                      <span className="text-sm font-semibold text-rose-700 dark:text-rose-400">1200 Hr Warning</span>
+                   <div className="flex items-center gap-2 bg-rose-50 dark:bg-rose-900/20 px-4 py-2 rounded-full border border-rose-200 dark:border-rose-700/30">
+                      <Server className="w-4 h-4 text-rose-600" />
+                      <span className="text-sm font-semibold text-rose-800 dark:text-rose-400">1200 Hr Warning</span>
                    </div>
                 )}
             </div>
@@ -189,7 +217,7 @@ const App: React.FC = () => {
         {/* Left Col: Daily Briefing */}
         <div className="lg:col-span-7 space-y-8">
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Daily Priorities</h2>
+                <h2 className="text-2xl font-bold tracking-tight text-black dark:text-white">Daily Priorities</h2>
                 <button className="text-rose-600 dark:text-rose-400 text-sm font-semibold hover:opacity-80 transition-opacity">
                     View Full Plan
                 </button>
@@ -197,22 +225,22 @@ const App: React.FC = () => {
             
             <div className="bg-white dark:bg-[#1C1C1E] rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none p-2">
                 {dailyTasks.map((task, idx) => (
-                    <div key={idx} className="group flex items-center justify-between p-6 hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-colors border-b border-slate-50 dark:border-white/5 last:border-0 cursor-pointer">
+                    <div key={idx} className="group flex items-center justify-between p-6 hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-colors border-b border-slate-100 dark:border-white/5 last:border-0 cursor-pointer">
                         <div className="flex items-center gap-5">
-                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shadow-sm ${idx === 0 ? 'bg-rose-500 text-white' : 'bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-300'}`}>
+                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shadow-sm ${idx === 0 ? 'bg-rose-500 text-white' : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300'}`}>
                                 {idx + 1}
                             </div>
                             <div>
-                                <h4 className="font-semibold text-slate-900 dark:text-white text-lg mb-1">{task.name}</h4>
-                                <div className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
-                                    <span className="font-medium text-rose-500 dark:text-rose-400 uppercase text-[11px] tracking-wider">{task.priority}</span>
+                                <h4 className="font-semibold text-black dark:text-white text-lg mb-1">{task.name}</h4>
+                                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+                                    <span className="font-medium text-rose-600 dark:text-rose-400 uppercase text-[11px] tracking-wider">{task.priority}</span>
                                     <span>•</span>
                                     <span>{task.mode}</span>
                                 </div>
                             </div>
                         </div>
                         <div className="text-right">
-                            <span className="block text-xl font-bold text-slate-900 dark:text-white">{task.estimatedHours}h</span>
+                            <span className="block text-xl font-bold text-black dark:text-white">{task.estimatedHours}h</span>
                             <span className="text-xs text-slate-400 font-medium uppercase tracking-wide">Remaining</span>
                         </div>
                     </div>
@@ -222,7 +250,7 @@ const App: React.FC = () => {
 
         {/* Right Col: Arm Status Tiles */}
         <div className="lg:col-span-5 space-y-8">
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Systems Status</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-black dark:text-white">Systems Status</h2>
             <div className="grid grid-cols-1 gap-6">
                 
                 {/* Professional Tile */}
@@ -234,10 +262,10 @@ const App: React.FC = () => {
                         <div className="w-14 h-14 bg-blue-50 dark:bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400">
                             <Briefcase className="w-7 h-7" />
                         </div>
-                        <span className="text-3xl font-bold text-slate-900 dark:text-white">{profProgress.toFixed(0)}%</span>
+                        <span className="text-3xl font-bold text-black dark:text-white">{profProgress.toFixed(0)}%</span>
                     </div>
-                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">IBM Ecosystem</h3>
-                    <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
+                    <h3 className="text-xl font-bold text-black dark:text-white mb-2">IBM Ecosystem</h3>
+                    <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
                         Identity & Data Security phases complete. QRadar active.
                     </p>
                 </div>
@@ -251,10 +279,10 @@ const App: React.FC = () => {
                         <div className="w-14 h-14 bg-purple-50 dark:bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-600 dark:text-purple-400">
                             <GraduationCap className="w-7 h-7" />
                         </div>
-                        <span className={`text-3xl font-bold ${swerveStatus === 'ACADEMIC_LAG' ? 'text-amber-500' : 'text-slate-900 dark:text-white'}`}>{acadProgress.toFixed(0)}%</span>
+                        <span className={`text-3xl font-bold ${swerveStatus === 'ACADEMIC_LAG' ? 'text-amber-600' : 'text-black dark:text-white'}`}>{acadProgress.toFixed(0)}%</span>
                     </div>
-                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Computer Science</h3>
-                    <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
+                    <h3 className="text-xl font-bold text-black dark:text-white mb-2">Computer Science</h3>
+                    <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
                         {swerveStatus === 'ACADEMIC_LAG' ? 'CRITICAL: Academic Lag Detected. Swerve immediately.' : 'Critical load on Mathematical Foundations.'}
                     </p>
                 </div>
@@ -265,15 +293,15 @@ const App: React.FC = () => {
       
       {/* Career Matrix - Grid Layout */}
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-8">Career Trajectory</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-black dark:text-white mb-8">Career Trajectory</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
             {CAREER_MAPS.map((map, idx) => (
                 <div key={idx} className={`p-8 rounded-3xl border border-transparent ${map.status === 'Earned' ? 'bg-green-50/50 dark:bg-green-900/10' : 'bg-white dark:bg-[#1C1C1E]'} shadow-[0_4px_20px_rgb(0,0,0,0.02)] dark:shadow-none relative group hover:shadow-lg transition-all`}>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Role Map</p>
-                    <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-6">{map.technical}</h4>
+                    <h4 className="text-lg font-bold text-black dark:text-white mb-6">{map.technical}</h4>
                     
                     <div className="flex items-center gap-3">
-                        <Shield className={`w-5 h-5 ${map.status === 'Earned' ? 'text-green-500' : 'text-slate-300 dark:text-slate-600'}`} />
+                        <Shield className={`w-5 h-5 ${map.status === 'Earned' ? 'text-green-600' : 'text-slate-300 dark:text-slate-600'}`} />
                         <span className={`text-sm font-semibold ${map.status === 'Earned' ? 'text-green-700 dark:text-green-400' : 'text-slate-500 dark:text-slate-400'}`}>
                             {map.status === 'Earned' ? 'Badge Secured' : 'Pending'}
                         </span>
@@ -296,7 +324,7 @@ const App: React.FC = () => {
     const augmentedPhases = phases.map(phase => {
         const augmentedTasks = phase.tasks.map((staticTask: Task) => {
             const coreSource = arm === 'PROFESSIONAL' ? athenaCore.professional.tracks : athenaCore.academic.units;
-            const coreTask = coreSource.find(t => t.id === staticTask.id);
+            const coreTask = coreSource.find((t: any) => t.id === staticTask.id);
             return {
                 ...staticTask,
                 progress: coreTask ? coreTask.progress : staticTask.progress
@@ -313,9 +341,9 @@ const App: React.FC = () => {
                         <div>
                             <div className="flex items-center gap-3 mb-2">
                                 <div className={`w-3 h-3 rounded-full ${phase.status === 'Completed' ? 'bg-green-500' : phase.status === 'In Progress' ? 'bg-rose-500' : 'bg-slate-300'}`}></div>
-                                <h3 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">{phase.name}</h3>
+                                <h3 className="text-3xl font-bold text-black dark:text-white tracking-tight">{phase.name}</h3>
                             </div>
-                            {phase.description && <p className="text-lg text-slate-500 dark:text-slate-400 pl-6">{phase.description}</p>}
+                            {phase.description && <p className="text-lg text-slate-600 dark:text-slate-400 pl-6">{phase.description}</p>}
                         </div>
                         <span className={`px-4 py-2 rounded-full text-sm font-bold tracking-wide uppercase ${phase.status === 'Completed' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'}`}>
                             {phase.status}
@@ -324,7 +352,11 @@ const App: React.FC = () => {
 
                     <div className="grid grid-cols-1 gap-4">
                         {phase.tasks.map((task: any) => (
-                            <ProtocolCard key={task.id} task={task} />
+                            <ProtocolCard 
+                                key={task.id} 
+                                task={task} 
+                                onUpdateProgress={handleTaskUpdate}
+                            />
                         ))}
                         {phase.tasks.length === 0 && phase.status !== 'Completed' && (
                             <div className="p-12 bg-slate-50 dark:bg-white/5 rounded-3xl text-center">
@@ -344,10 +376,10 @@ const App: React.FC = () => {
       <nav className="fixed top-6 left-0 right-0 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 z-50">
         <div className="bg-white/70 dark:bg-[#1C1C1E]/70 backdrop-blur-xl rounded-full border border-white/20 dark:border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-black/20 h-16 flex items-center justify-between px-6 transition-all duration-300">
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
-                <div className="bg-slate-900 dark:bg-white p-1.5 rounded-lg">
+                <div className="bg-black dark:bg-white p-1.5 rounded-lg">
                     <Server className="w-5 h-5 text-white dark:text-black" />
                 </div>
-                <span className="font-bold text-lg tracking-tight text-slate-900 dark:text-white">Athena</span>
+                <span className="font-bold text-lg tracking-tight text-black dark:text-white">Athena</span>
             </div>
             
             <div className="hidden md:flex items-center space-x-1">
@@ -355,7 +387,7 @@ const App: React.FC = () => {
                   <button 
                     key={tab}
                     onClick={() => setActiveTab(tab as any)} 
-                    className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 ${activeTab === tab ? 'bg-slate-900 text-white dark:bg-white dark:text-black' : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
+                    className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 ${activeTab === tab ? 'bg-black text-white dark:bg-white dark:text-black' : 'text-slate-600 hover:text-black dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
                   >
                     {tab.charAt(0).toUpperCase() + tab.slice(1)}
                   </button>
@@ -391,8 +423,8 @@ const App: React.FC = () => {
             <div className="animate-in fade-in space-y-12">
                 <div className="flex flex-col md:flex-row justify-between items-end border-b border-slate-200 dark:border-white/10 pb-8">
                     <div>
-                        <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">IBM Ecosystem</h2>
-                        <p className="text-xl text-slate-500 dark:text-slate-400">Professional Arm & Technical Sales</p>
+                        <h2 className="text-4xl font-bold text-black dark:text-white mb-2">IBM Ecosystem</h2>
+                        <p className="text-xl text-slate-600 dark:text-slate-400">Professional Arm & Technical Sales</p>
                     </div>
                     <div className="text-right mt-4 md:mt-0">
                          <p className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-1">Current Target</p>
@@ -407,8 +439,8 @@ const App: React.FC = () => {
             <div className="animate-in fade-in space-y-12">
                 <div className="flex flex-col md:flex-row justify-between items-end border-b border-slate-200 dark:border-white/10 pb-8">
                     <div>
-                        <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">Computer Science</h2>
-                        <p className="text-xl text-slate-500 dark:text-slate-400">Academic Degree & Foundations</p>
+                        <h2 className="text-4xl font-bold text-black dark:text-white mb-2">Computer Science</h2>
+                        <p className="text-xl text-slate-600 dark:text-slate-400">Academic Degree & Foundations</p>
                     </div>
                      <div className="text-right mt-4 md:mt-0">
                          <p className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-1">Critical Load</p>
@@ -422,8 +454,8 @@ const App: React.FC = () => {
         {activeTab === 'athena' && (
             <div className="animate-in slide-in-from-bottom-12 duration-500 max-w-5xl mx-auto">
                 <div className="mb-12 text-center">
-                    <h2 className="text-5xl font-bold text-slate-900 dark:text-white mb-6 tracking-tight">Athena Intelligence</h2>
-                    <p className="text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
+                    <h2 className="text-5xl font-bold text-black dark:text-white mb-6 tracking-tight">Athena Intelligence</h2>
+                    <p className="text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
                         Your HPI strategic advisor. Optimized for Node constraints.
                     </p>
                 </div>
