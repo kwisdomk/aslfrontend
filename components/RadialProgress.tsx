@@ -56,8 +56,8 @@ const RadialProgress: React.FC<RadialProgressProps> = ({
           <span className="text-3xl font-bold tracking-tighter">{percentage.toFixed(0)}%</span>
         </div>
       </div>
-      {label && <span className="mt-4 text-base font-medium text-slate-500 dark:text-slate-400">{label}</span>}
-      {subLabel && <span className="text-sm text-slate-400 dark:text-slate-500">{subLabel}</span>}
+      {label && <span className="mt-4 text-base font-medium text-slate-700 dark:text-slate-200">{label}</span>}
+      {subLabel && <span className="text-sm text-slate-500 dark:text-slate-400">{subLabel}</span>}
     </div>
   );
 };

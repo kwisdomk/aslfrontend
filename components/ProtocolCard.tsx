@@ -70,7 +70,7 @@ const ProtocolCard: React.FC<ProtocolCardProps> = ({ task, onUpdateProgress }) =
 
       {/* Progress Section */}
       <div className="relative">
-        <div className="flex justify-between text-sm font-medium text-slate-500 dark:text-slate-500 mb-2">
+        <div className="flex justify-between text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
             <span>Progress</span>
             <div className="flex items-center gap-3">
                 <span className={`flex items-center transition-colors ${isEditing ? 'text-blue-500 font-bold' : 'text-rose-500 dark:text-rose-400'}`}>
