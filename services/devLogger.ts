@@ -1,4 +1,3 @@
-
 import { supabase } from './supabaseClient';
 
 interface LogPayload {
@@ -12,27 +11,27 @@ interface LogPayload {
  * This function will only run if the environment is set to development.
  * @param {LogPayload} payload - The data to be logged.
  */
-export const logDevEvent = async (payload: LogPayload) => {
-  // Only run the logger in a development environment
-  if (import.meta.env.VITE_APP_ENV !== 'development') {
+export const logDevEvent = async (eventType: string, metadata: any) => {
+  if (!import.meta.env.DEV || !supabase) {
     return;
   }
 
+  const payload = {
+    event_type: eventType,
+    metadata,
+    timestamp: new Date().toISOString(),
+  };
+
   try {
-    const { data, error } = await supabase
+    // Explicitly cast the response so TypeScript can see 'data' and 'error'
+    const { data, error } = await (supabase
       .from('dev_audit_log')
-      .insert([
-        {
-          event_type: payload.event_type,
-          payload: payload.metadata, // Corrected from metadata to payload to match the DB schema
-          execution_time: payload.execution_time,
-        },
-      ]);
+      .insert([payload]) as any);
 
     if (error) {
-      console.error('Ghost Tracker Error:', error.message);
+      console.warn('[devLogger] Supabase insert error:', error);
     }
-  } catch (err: any) {
-    console.error('Failed to log dev event:', err.message);
+  } catch (err) {
+    console.warn('[devLogger] Failed to log event:', err);
   }
 };
