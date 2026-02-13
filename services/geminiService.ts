@@ -1,67 +1,39 @@
-
-import { GoogleGenerativeAI, ChatSession, GenerateContentResult } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { SYSTEM_INSTRUCTION } from "../constants";
 import { logDevEvent } from "./devLogger";
 
-let chatSession: ChatSession | null = null;
+const apiKey = import.meta.env.VITE_API_KEY;
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
-const getClient = () => {
-    const apiKey = import.meta.env.VITE_API_KEY;
-    if (!apiKey) {
-        throw new Error("VITE_API_KEY is not defined in .env.local");
-    }
-    return new GoogleGenerativeAI(apiKey);
-};
+export const getAthenaResponse = async (userPrompt: string) => {
+  if (!ai) throw new Error("Aelpher Error: API Key missing.");
 
-const initializeChat = async (): Promise<ChatSession> => {
-    if (chatSession) {
-        return chatSession;
-    }
-    const genAI = getClient();
-    chatSession = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' })
-        .startChat({
-            systemInstruction: {
-                role: "system",
-                parts: [{ text: SYSTEM_INSTRUCTION }],
-            },
-            history: [],
-        });
-    return chatSession;
+  try {
+    // FIX: Call ai.models.generateContent directly.
+    // In v2 SDK, this is stateless and returns the response directly.
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [{ role: "user", parts: [{ text: userPrompt }] }]
+    });
+
+    // FIX: In the new SDK, .text is a property, not a function.
+    const athenaText = response.text;
+
+    await logDevEvent('ATHENA_CHAT_SUCCESS', { prompt: userPrompt });
+
+    return athenaText;
+  } catch (err: any) {
+    await logDevEvent('ATHENA_CHAT_ERROR', { error: err.message });
+    throw err;
+  }
 };
 
 export const sendMessageToAthena = async (message: string): Promise<string> => {
-    const startTime = performance.now();
-
-    try {
-        const chat = await initializeChat();
-        const result: GenerateContentResult = await chat.sendMessage(message);
-        const response = result.response;
-        const text = response.text();
-
-        const executionTime = performance.now() - startTime;
-
-        // Non-blocking call to the dev logger
-        logDevEvent({
-            event_type: "API_CALL_GEMINI_SUCCESS",
-            metadata: { request: message, response: text },
-            execution_time: executionTime,
-        });
-
-        return text || "Athena system offline. No response received.";
-    } catch (error: any) {
-        const executionTime = performance.now() - startTime;
-        console.error("Athena Communication Error:", error);
-
-        // Log the failure event
-        logDevEvent({
-            event_type: "API_CALL_GEMINI_FAILURE",
-            metadata: { request: message, error: error.message },
-            execution_time: executionTime,
-        });
-
-        if (error.message && error.message.includes("API Key")) {
-            return "CRITICAL ERROR: API Key missing. Please configure VITE_API_KEY in your .env.local file to activate Athena.";
-        }
-        return "Error: Secure connection to Athena Mainframe failed.";
-    }
+  try {
+    const result = await getAthenaResponse(message);
+    return result || "Athena system offline. No response received.";
+  } catch (error: any) {
+    console.error("Athena Communication Error:", error);
+    return "Error: Secure connection to Athena Mainframe failed.";
+  }
 };
