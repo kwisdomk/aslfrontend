@@ -4,109 +4,104 @@ import { Cpu, Battery, BookOpen, Terminal, ShieldAlert, Edit2, Check } from 'luc
 
 interface ProtocolCardProps {
   task: Task;
-  onUpdateProgress?: (id: string, newProgress: number) => void;
+  onProgressUpdate?: (id: string, progress: number) => void;
+  priorityIndex?: number;
 }
 
-const ProtocolCard: React.FC<ProtocolCardProps> = ({ task, onUpdateProgress }) => {
+const ProtocolCard = ({ task, onProgressUpdate, priorityIndex }: ProtocolCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [localProgress, setLocalProgress] = useState(task.progress);
 
-  const getModeIcon = (mode: HardwareMode) => {
-    switch (mode) {
-      case HardwareMode.PERFORMANCE: return <Cpu className="w-4 h-4 text-rose-500" />;
-      case HardwareMode.EFFICIENCY: return <Battery className="w-4 h-4 text-green-500" />;
-      case HardwareMode.SILENT: return <BookOpen className="w-4 h-4 text-blue-500" />;
-      default: return <Terminal className="w-4 h-4 text-slate-500" />;
-    }
-  };
-
-  const getPriorityBadge = (priority: Priority) => {
-    let classes = "";
-    switch (priority) {
-      case Priority.CRITICAL: classes = 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-300'; break;
-      case Priority.HIGH: classes = 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300'; break;
-      case Priority.ANCHOR: classes = 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300'; break;
-      default: classes = 'bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400'; break;
-    }
-    return (
-        <span className={`px-3 py-1 text-[11px] font-bold rounded-full uppercase tracking-wider ${classes}`}>
-          {priority}
-        </span>
-    );
-  };
-
-  const handleSave = () => {
-    if (onUpdateProgress) {
-        onUpdateProgress(task.id, localProgress);
+  const handleProgressUpdate = () => {
+    if (onProgressUpdate && localProgress !== task.progress) {
+      onProgressUpdate(task.id, localProgress);
     }
     setIsEditing(false);
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'critical': return 'text-rose-500';
+      case 'in_progress': return 'text-amber-500';
+      case 'blocked': return 'text-red-600';
+      case 'completed': return 'text-emerald-500';
+      default: return 'text-rose-500';
+    }
+  };
+
   return (
-    <div className="group bg-white dark:bg-[#1C1C1E] rounded-3xl p-8 mb-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none hover:shadow-[0_20px_40px_rgb(0,0,0,0.06)] transition-all duration-300 transform hover:-translate-y-1 relative">
-      <div className="flex justify-between items-start mb-4">
-        {/* Update: Changed text-slate-900 to text-black for visibility */}
-        <h3 className="text-xl font-semibold text-black dark:text-white tracking-tight">{task.name}</h3>
-        {getPriorityBadge(task.priority)}
+    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-all duration-300">
+      {/* Priority Index Badge */}
+      <div className="w-10 h-10 rounded-lg bg-rose-500 flex items-center justify-center text-white font-bold shrink-0">
+        {priorityIndex || task.id.charAt(0)}
       </div>
       
-      <div className="flex items-center gap-6 text-sm mb-6">
-        <div className="flex items-center space-x-2 text-slate-600 dark:text-slate-400">
-            {getModeIcon(task.mode)}
-            <span className="font-medium">{task.mode}</span>
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <h3 className="font-bold text-slate-900 truncate">{task.title}</h3>
+            <div className="flex gap-2 items-center text-[10px] font-bold mt-1">
+              <span className={`uppercase ${getStatusColor(task.status)}`}>
+                {task.status.replace('_', ' ')}
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="text-slate-400 uppercase">{task.arm}</span>
+            </div>
+          </div>
+          
+          <div className="text-right ml-4">
+            {isEditing ? (
+              <input 
+                type="number" 
+                value={localProgress}
+                onChange={(e) => setLocalProgress(parseInt(e.target.value) || 0)}
+                onBlur={handleProgressUpdate}
+                onKeyDown={(e) => e.key === 'Enter' && handleProgressUpdate()}
+                className="w-16 border border-slate-300 rounded-lg p-1 text-sm font-bold text-slate-900 text-center"
+                autoFocus
+                min="0"
+                max="100"
+              />
+            ) : (
+              <button 
+                onClick={() => setIsEditing(true)}
+                className="text-sm font-bold text-slate-900 hover:text-rose-500 transition"
+              >
+                {task.progress}%
+              </button>
+            )}
+            <div className="text-[10px] text-slate-400 uppercase tracking-tighter">
+              {task.estimated_hours}h total
+            </div>
+          </div>
         </div>
-        <div className="flex items-center space-x-2 text-slate-600 dark:text-slate-400">
-            <Terminal className="w-4 h-4" />
-            <span className="font-medium">{task.memoryFocus}</span>
-        </div>
-      </div>
 
-      {task.hardwareNote && (
-        <div className="mb-6 flex items-start space-x-3 bg-amber-50/50 dark:bg-amber-900/10 p-4 rounded-2xl">
-            <ShieldAlert className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-amber-700 dark:text-amber-400 leading-relaxed">{task.hardwareNote}</p>
+        {/* Progress Bar */}
+        <div className="mt-3 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-rose-500 to-orange-400 transition-all duration-500"
+            style={{ width: `${task.progress}%` }}
+          />
         </div>
-      )}
 
-      {/* Progress Section */}
-      <div className="relative">
-        <div className="flex justify-between text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
-            <span>Progress</span>
-            <div className="flex items-center gap-3">
-                <span className={`flex items-center transition-colors ${isEditing ? 'text-blue-500 font-bold' : 'text-rose-500 dark:text-rose-400'}`}>
-                    {isEditing ? `${localProgress.toFixed(0)}%` : (task.estimatedHours ? `${task.estimatedHours}h left` : 'TBD')}
-                </span>
-                
-                {onUpdateProgress && (
-                    <button 
-                        onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-                        className={`p-1.5 rounded-full transition-colors ${isEditing ? 'bg-blue-100 text-blue-600 hover:bg-blue-200' : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600 dark:bg-white/5 dark:hover:bg-white/10'}`}
-                    >
-                        {isEditing ? <Check className="w-3.5 h-3.5" /> : <Edit2 className="w-3.5 h-3.5" />}
-                    </button>
-                )}
-            </div>
+        {/* Additional Metadata */}
+        <div className="flex gap-3 mt-2 text-[10px]">
+          {task.is_retiring && (
+            <span className="px-2 py-0.5 bg-red-50 text-red-600 rounded-full font-bold">
+              🚨 RETIRING
+            </span>
+          )}
+          {task.nba_score && task.nba_score > 0.6 && (
+            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full font-bold">
+              ⚡ HIGH IMPACT
+            </span>
+          )}
+          {task.velocity_weight && task.velocity_weight > 1.2 && (
+            <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full font-bold">
+              🎯 PRIORITY
+            </span>
+          )}
         </div>
-        
-        {isEditing ? (
-            <div className="h-8 flex items-center">
-                <input 
-                    type="range" 
-                    min="0" 
-                    max="100" 
-                    value={localProgress} 
-                    onChange={(e) => setLocalProgress(Number(e.target.value))}
-                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700 accent-blue-600"
-                />
-            </div>
-        ) : (
-            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
-                <div 
-                    className="bg-slate-900 dark:bg-white h-full rounded-full transition-all duration-1000 ease-out"
-                    style={{ width: `${task.progress}%` }}
-                ></div>
-            </div>
-        )}
       </div>
     </div>
   );
