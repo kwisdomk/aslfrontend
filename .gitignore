@@ -116,3 +116,5 @@ dist
 # IDE & environment files
 .idx
 dev.nix
+athena-strategic-planner@*
+tsc
