@@ -18,15 +18,35 @@ export enum Priority {
 
 export interface Task {
   id: string;
-  name: string;
-  progress: number; // 0 to 100
-  details?: string;
-  bottlenecks?: string[];
-  hardwareNote?: string;
-  mode: HardwareMode;
-  priority: Priority;
-  memoryFocus: string;
-  estimatedHours?: number; // Estimated hours remaining to completion
+  title: string;
+  theater_id: string;
+  arm: string; // 'IBM Internship' | 'Bachelors CS'
+  progress: number;
+  estimated_hours?: number;
+  status: 'in_progress' | 'completed' | 'blocked' | 'archived';
+  
+  // NBA Priority Engine
+  is_retiring: boolean;
+  nba_score: number;
+  velocity_weight: number;
+  
+  user_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StrategicTask {
+  id: string
+  title: string
+  progress: number
+
+  details?: string
+  bottlenecks?: string[]
+  mode?: HardwareMode
+  priority?: Priority
+  memoryFocus?: string
+  hardwareNote?: string
+  estimatedHours?: number
 }
 
 export interface Phase {
@@ -35,7 +55,7 @@ export interface Phase {
   platform?: string;
   status: 'Completed' | 'In Progress' | 'Pending';
   badges?: string[];
-  tasks: Task[];
+  tasks: StrategicTask[];
   description?: string;
 }
 
@@ -46,8 +66,13 @@ export interface CareerMap {
 }
 
 export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface Theater {
   id: string;
-  role: 'user' | 'model';
-  text: string;
-  timestamp: Date;
+  name: string;
+  description?: string;
+  created_at: string;
 }
