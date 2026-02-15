@@ -1,0 +1,31 @@
+/* Base styles */
+:root {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #111;
+  background-color: #fff;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+/* Importing React and ReactDOM */
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from '../App.tsx';
+import './index.css';
+
+/* Rendering the application */
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+);
